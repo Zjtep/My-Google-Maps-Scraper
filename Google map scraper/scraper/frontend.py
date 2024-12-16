@@ -30,11 +30,11 @@ class Frontend:
             background=[("active", "white")],
         )
 
-        bgimage = tk.PhotoImage(file="Google map scraper\images\Home.png")
+        # bgimage = tk.PhotoImage(file="Google map scraper\images\Home.png")
 
-        self.imglabel = tk.Label(self.root, image=bgimage)
-        self.imglabel.place(x=0, y=0, relwidth=1, relheight=1)
-        self.imglabel.image = bgimage
+        # self.imglabel = tk.Label(self.root, image=bgimage)
+        # self.imglabel.place(x=0, y=0, relwidth=1, relheight=1)
+        # self.imglabel.image = bgimage
 
         """For search entry"""
         self.search_label = ttk.Label(
@@ -96,7 +96,7 @@ class Frontend:
         self.healdessCheckBox.place(x=700, y=45)
 
         self.__replacingtext(
-            "Welcome to Google Maps Scraper!\n\nLet's start scraping..."
+            "Google Maps Scrapping"
         )
 
         self.init_communicator()
