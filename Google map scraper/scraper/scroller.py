@@ -94,4 +94,32 @@ class Scroller:
             self.start_parsing()
 
 
+    def scroll_first_result(self):
+        """Fetch only the first result without scrolling."""
+        scrollAbleElement = self.driver.execute_script(
+            """return document.querySelector("[role='feed']")"""
+        )
+        if scrollAbleElement is None:
+            Communicator.show_message(message="We are sorry but, No results found for your search query on Google Maps...")
+            return
+
+        Communicator.show_message(message="Fetching the first result...")
+
+        # Parse the scrollable feed to find the first result
+        allResultsListSoup = BeautifulSoup(
+            scrollAbleElement.get_attribute('outerHTML'), 'html.parser'
+        )
+        first_result = allResultsListSoup.find('a', class_='hfpxzc')
+
+        if first_result:
+            first_result_link = first_result.get('href')
+            Communicator.show_message(f"First result link: {first_result_link}")
+
+            # Initialize parser and parse only the first result
+            self.__init_parser()
+            self.parser.main([first_result_link])
+        else:
+            Communicator.show_message("No results available to parse.")
+
+
                     
