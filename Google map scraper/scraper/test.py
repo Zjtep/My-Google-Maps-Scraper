@@ -18,11 +18,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(current_dir, '..')))
 
 def test_single_url():
     # Test URL for a single business
-    test_url = r"https://www.google.com/maps/place/POPEYES+LOUISIANA+CHICKEN/@43.6647973,-79.346555,15z/data=!3m1!5s0x89d4cb7ec8991b4d:0x801cdc8a4b5771ff!4m6!3m5!1s0x89d4cb4a407bd9a7:0xa06bdce7172ebb9c!8m2!3d43.6685852!4d-79.3390983!16s%2Fg%2F11fqtqw1hk?entry=ttu&g_ep=EgoyMDI0MTIxMS4wIKXMDSoASAFQAw%3D%3D"
+    test_url = r"https://www.google.com/maps/place/Bazooka+Kickboxing+%26+MMA/@43.7774064,-79.2513025,17z/data=!3m1!4b1!4m6!3m5!1s0x89d4d1aa42954655:0x1437226f9279d76c!8m2!3d43.7774026!4d-79.2487276!16s%2Fg%2F11bymwt61v?entry=ttu&g_ep=EgoyMDI0MTIxMS4wIKXMDSoASAFQAw%3D%3D"
 
     # Use undetected_chromedriver to initialize WebDriver
     options = uc.ChromeOptions()
-    options.headless = True  # Run headless for testing
+    options.headless = False  # Run headless for testing
     driver = uc.Chrome(options=options)
 
     try:

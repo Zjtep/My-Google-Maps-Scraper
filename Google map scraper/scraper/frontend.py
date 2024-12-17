@@ -16,9 +16,9 @@ class Frontend:
         """Initializing frontend layout"""
 
         self.root = tk.Tk()
-        icon = tk.PhotoImage(file="Google map scraper\images\GMS.png")
+        # icon = tk.PhotoImage(file="Google map scraper\images\GMS.png")
 
-        self.root.iconphoto(True, icon)
+        # self.root.iconphoto(True, icon)
         self.root.geometry("850x650")
         self.root.resizable(False, False)
         self.root.title("Google maps scraper")

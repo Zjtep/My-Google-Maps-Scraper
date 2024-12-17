@@ -5,9 +5,9 @@ from .communicator import Communicator
 from .datasaver import DataSaver
 from .base import Base
 from .common import Common
+from .email_extractor import WebCrawler  # Import WebCrawler from the email_extractor module
 
 class Parser(Base):
-
     def __init__(self, driver) -> None:
         self.driver = driver
         self.finalData = []
@@ -20,21 +20,15 @@ class Parser(Base):
 
     def init_data_saver(self):
         self.data_saver = DataSaver()
-    
+
     def parse(self):
-        """Our function to parse the html"""
-
-        """This block will get element details sheet of a business. 
-        Details sheet means that business details card when you click on a business in 
-        serach results in google maps"""
-
-
+        """Parse the HTML of the business details sheet to extract key information, including email and phone."""
         infoSheet = self.driver.execute_script(
             """return document.querySelector("[role='main']")""")
         try:
             # Initialize data points
-            rating, totalReviews, address, websiteUrl, phone, hours, category, gmapsUrl, bookingLink, businessStatus = (
-                None, None, None, None, None, None, None, None, None, None
+            rating, totalReviews, address, websiteUrl, phone, hours, category, gmapsUrl, bookingLink, businessStatus, email = (
+                None, None, None, None, None, None, None, None, None, None, None
             )
 
             html = infoSheet.get_attribute("outerHTML")
@@ -68,11 +62,10 @@ class Parser(Base):
 
                 if data_tooltip == self.comparing_tool_tips["location"]:
                     address = text
-               
                 elif data_tooltip == self.comparing_tool_tips["phone"]:
                     phone = text.strip()
-               
-            # Extract website URL
+
+            # Extract website URL (this is the actual business website)
             try:
                 websiteTag = soup.find("a", {"aria-label": lambda x: x and "Website:" in x})
                 if websiteTag:
@@ -100,12 +93,11 @@ class Parser(Base):
             except:
                 category = None
 
-            # Extract Google Maps URL
+            # Extract Google Maps URL (this will not be used to crawl for email/phone)
             try:
                 gmapsUrl = self.driver.current_url
             except:
                 gmapsUrl = None
-
 
             # Extract business status
             try:
@@ -113,10 +105,29 @@ class Parser(Base):
             except:
                 businessStatus = None
 
+            # Print the website URL being sent to WebCrawler for debugging
+            print(f"Crawling the website: {websiteUrl}")
+
+            # Use WebCrawler to get email and phone for the business page
+            if websiteUrl:
+                web_crawler = WebCrawler(url=websiteUrl)
+                success = web_crawler.crawl()  # Crawl the page to extract the email and phone
+
+                if not success:
+                    print(f"Failed to crawl the website: {websiteUrl}")
+
+                email = web_crawler.get_email_from_website()
+                phone = web_crawler.get_phone_from_website()
+
+                print(f"Extracted Email: {email}")
+                print(f"Extracted Phone: {phone}")
+            else:
+                print("No website URL found for crawling.")
+
             data = {
                 "Category": category,
                 "Name": name,
-                "Phone": phone,
+                "Phone": phone if phone else "",
                 "Google Maps URL": gmapsUrl,
                 "Website": websiteUrl,
                 "Business Status": businessStatus,
@@ -125,6 +136,7 @@ class Parser(Base):
                 "Booking Links": bookingLink,
                 "Rating": rating,
                 "Hours": hours,
+                "Email": email if email else "",
             }
 
             self.finalData.append(data)
@@ -145,7 +157,7 @@ class Parser(Base):
 
         except Exception as e:
             Communicator.show_message(f"Error occurred while parsing the locations. Error: {str(e)}")
-            
+
         finally:
             self.init_data_saver()
             self.data_saver.save(datalist=self.finalData)
