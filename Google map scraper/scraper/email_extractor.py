@@ -7,33 +7,25 @@ class WebCrawler:
         self.url = url
         self.email = ""
         self.phone = ""
-        
+
     def set_url(self, url):
         """Set or update the URL for crawling."""
         self.url = url
-        
-    def remove_dup_email(self, x):
-        """Remove duplicate email addresses."""
-        return list(dict.fromkeys(x))
 
-    def remove_dup_phone(self, x):
-        """Remove duplicate phone numbers."""
-        return list(dict.fromkeys(x))
+    def remove_dup(self, data):
+        """Remove duplicate entries."""
+        return list(dict.fromkeys(data))
 
     def get_email(self, html):
         """Extract email addresses from HTML content."""
-        try:
-            email = re.findall("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,3}", html)
-            nodup_email = self.remove_dup_email(email)
-            return [i.strip() for i in nodup_email]
-        except Exception as e:
-            print(f"Email search error: {e}")
-            return []
+        email_pattern = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
+        return self.remove_dup(re.findall(email_pattern, html))
 
     def get_phone(self, html):
-        """Extract phone numbers from HTML content."""
+        """Extract valid phone numbers from HTML content."""
         try:
-            phone_pattern = r"(?:(?:8|\+7)[\- ]?)?(?:\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}"
+            # Updated regex for valid North American phone numbers
+            phone_pattern = r"\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
             phone = re.findall(phone_pattern, html)
             nodup_phone = self.remove_dup_phone(phone)
             return [i.strip() for i in nodup_phone]
@@ -41,42 +33,67 @@ class WebCrawler:
             print(f"Phone search error: {e}")
             return []
 
+
+    def fetch_page(self, url):
+        """Fetch HTML content from a given URL."""
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                return response.content
+            else:
+                print(f"Unable to access {url} (Status code: {response.status_code})")
+                return None
+        except requests.RequestException as e:
+            print(f"Error fetching {url}: {e}")
+            return None
+
+    def find_contact_page(self, html, base_url):
+        """Search for links containing 'contact' and return the full URL."""
+        soup = BeautifulSoup(html, "html.parser")
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
+            if "contact" in href.lower():  # Check for 'contact' in the link
+                if href.startswith("http"):  # Absolute URL
+                    return href
+                else:  # Relative URL
+                    return f"{base_url.rstrip('/')}/{href.lstrip('/')}"
+        return None
+
     def crawl(self):
-        """Crawl the URL to fetch email and phone."""
+        """Crawl the URL to fetch email and phone, including 'Contact Us' page."""
         if not self.url:
             print("No URL set for crawling.")
             return False
-        
-        try:
-            # Send a GET request to the website
-            response = requests.get(self.url, verify=False)
-            
-            # Check if the request was successful (status code 200)
-            if response.status_code != 200:
-                print(f"Unable to access {self.url} (Status code: {response.status_code})")
-                return False
-            
-            # Print out the HTML content (for debugging purposes)
-            print(f"HTML Content fetched from {self.url}: {response.content[:500]}...")
 
-            # Parse the page content using BeautifulSoup
-            soup = BeautifulSoup(response.content, 'lxml', from_encoding=response.encoding)
-            
-            # Get emails and phones from the page
-            emails = self.get_email(soup.get_text())
-            phones = self.get_phone(soup.get_text())
-            
-            # Set the first found email and phone, or empty string if none found
-            self.email = emails[0] if emails else ""
-            self.phone = phones[0] if phones else ""
-            
-            print(f"Found email: {self.email}")
-            print(f"Found phone: {self.phone}")
-            return True
-        
-        except Exception as e:
-            print(f"Error occurred while crawling {self.url}: {e}")
+        base_url = self.url
+        html = self.fetch_page(base_url)
+
+        if not html:
             return False
+
+        # Search for emails and phone numbers on the main page
+        soup = BeautifulSoup(html, "html.parser")
+        page_text = soup.get_text()
+        emails = self.get_email(page_text)
+        phones = self.get_phone(page_text)
+
+        # Try finding a 'Contact Us' page
+        contact_page_url = self.find_contact_page(html, base_url)
+        if contact_page_url:
+            print(f"Found 'Contact Us' page: {contact_page_url}")
+            contact_html = self.fetch_page(contact_page_url)
+            if contact_html:
+                contact_text = BeautifulSoup(contact_html, "html.parser").get_text()
+                emails.extend(self.get_email(contact_text))
+                phones.extend(self.get_phone(contact_text))
+
+        # Deduplicate and save the first found email and phone
+        self.email = emails[0] if emails else "Not found"
+        self.phone = phones[0] if phones else "Not found"
+
+        print(f"Found email: {self.email}")
+        print(f"Found phone: {self.phone}")
+        return True
 
     def get_email_from_website(self):
         """Return the email from the crawled URL."""
@@ -87,19 +104,11 @@ class WebCrawler:
         return self.phone
 
 
-
 if __name__ == "__main__":
     # Example usage:
-    # Initialize with a URL
-    crawler = WebCrawler(url="https://www.theacademytoronto.ca/")
-    
-    # Crawl to fetch email and phone
+    crawler = WebCrawler(url="https://islamicsoccerleague.ca/")
     crawler.crawl()
-    
-    # Get and print the email and phone
-    crawler.print_results()
-    
-    # If you need to set a new URL and fetch new data:
-    crawler.set_url("https://www.bazookakickboxing.ca/")
-    crawler.crawl()
-    crawler.get_phone_from_website()
+
+    print("Final Results:")
+    print("Email:", crawler.get_email_from_website())
+    print("Phone:", crawler.get_phone_from_website())

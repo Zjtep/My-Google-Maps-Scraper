@@ -22,13 +22,14 @@ class Parser(Base):
         self.data_saver = DataSaver()
 
     def parse(self):
-        """Parse the HTML of the business details sheet to extract key information, including email and phone."""
+        """Parse the HTML of the business details sheet to extract key information, including email, phone, and LGBTQ+ friendly."""
         infoSheet = self.driver.execute_script(
-            """return document.querySelector("[role='main']")""")
+            """return document.querySelector("[role='main']")"""
+        )
         try:
             # Initialize data points
-            rating, totalReviews, address, websiteUrl, phone, hours, category, gmapsUrl, bookingLink, businessStatus, email = (
-                None, None, None, None, None, None, None, None, None, None, None
+            rating, totalReviews, address, websiteUrl, phone, hours, category, gmapsUrl, bookingLink, businessStatus, email, lgbtq_friendly = (
+                None, None, None, None, None, None, None, None, None, None, None, None
             )
 
             html = infoSheet.get_attribute("outerHTML")
@@ -65,7 +66,7 @@ class Parser(Base):
                 elif data_tooltip == self.comparing_tool_tips["phone"]:
                     phone = text.strip()
 
-            # Extract website URL (this is the actual business website)
+            # Extract website URL
             try:
                 websiteTag = soup.find("a", {"aria-label": lambda x: x and "Website:" in x})
                 if websiteTag:
@@ -93,7 +94,7 @@ class Parser(Base):
             except:
                 category = None
 
-            # Extract Google Maps URL (this will not be used to crawl for email/phone)
+            # Extract Google Maps URL
             try:
                 gmapsUrl = self.driver.current_url
             except:
@@ -105,24 +106,23 @@ class Parser(Base):
             except:
                 businessStatus = None
 
-            # Print the website URL being sent to WebCrawler for debugging
-            print(f"Crawling the website: {websiteUrl}")
+            # Check for LGBTQ+ Friendly Status
+            try:
+                lgbtq_tag = soup.find("span", string=lambda x: x and "LGBTQ+ friendly" in x)
+                lgbtq_friendly = "Yes" if lgbtq_tag else "No"
+            except:
+                lgbtq_friendly = "No"
 
-            # Use WebCrawler to get email and phone for the business page
-            if websiteUrl:
-                web_crawler = WebCrawler(url=websiteUrl)
-                success = web_crawler.crawl()  # Crawl the page to extract the email and phone
-
-                if not success:
-                    print(f"Failed to crawl the website: {websiteUrl}")
-
-                email = web_crawler.get_email_from_website()
-                phone = web_crawler.get_phone_from_website()
-
-                print(f"Extracted Email: {email}")
-                print(f"Extracted Phone: {phone}")
-            else:
-                print("No website URL found for crawling.")
+            # Fallback: Use WebCrawler if phone or email is missing
+            if (not phone or phone.strip() == "") or (not email or email.strip() == ""):
+                if websiteUrl:
+                    print(f"Using WebCrawler to fetch missing data from: {websiteUrl}")
+                    web_crawler = WebCrawler(url=websiteUrl)
+                    if web_crawler.crawl():
+                        email = email or web_crawler.get_email_from_website()
+                        phone = phone or web_crawler.get_phone_from_website()
+                else:
+                    print("No website URL found; skipping WebCrawler fallback.")
 
             data = {
                 "Category": category,
@@ -137,6 +137,7 @@ class Parser(Base):
                 "Rating": rating,
                 "Hours": hours,
                 "Email": email if email else "",
+                "LGBTQ+ Friendly": lgbtq_friendly,
             }
 
             self.finalData.append(data)

@@ -1,115 +1,125 @@
-"""
-This module contain the code for frontend
-"""
-
 from .communicator import Communicator
 import tkinter as tk
-from tkinter import ttk,  WORD
+from tkinter import ttk, WORD
 from scraper.scraper import Backend
-from .common  import Common
+from .common import Common
 import threading
-
 
 
 class Frontend:
     def __init__(self):
         """Initializing frontend layout"""
 
+        # Root window setup
         self.root = tk.Tk()
-        # icon = tk.PhotoImage(file="Google map scraper\images\GMS.png")
-
-        # self.root.iconphoto(True, icon)
-        self.root.geometry("850x650")
+        self.root.geometry("900x700")
         self.root.resizable(False, False)
-        self.root.title("Google maps scraper")
+        self.root.title("Google Maps Scraper")
 
-        self.style = ttk.Style()
-        self.style.map(
-            "my.TButton",  # making style for our buttons
-            foreground=[("active", "green")],
-            background=[("active", "white")],
-        )
+        # Set a modern background color
+        self.root.configure(bg="#F8F9FA")
 
-        # bgimage = tk.PhotoImage(file="Google map scraper\images\Home.png")
-
-        # self.imglabel = tk.Label(self.root, image=bgimage)
-        # self.imglabel.place(x=0, y=0, relwidth=1, relheight=1)
-        # self.imglabel.image = bgimage
-
-        """For search entry"""
-        self.search_label = ttk.Label(
+        """Title Label"""
+        self.title_label = tk.Label(
             self.root,
-            text="Search:",
-            font=("Franklin Gothic Medium", 17),
-            foreground="green",
-            background="white",
+            text="Google Maps Scraper",
+            font=("Arial", 26, "bold"),
+            bg="#F8F9FA",
+            fg="#343A40",
         )
-        self.search_label.place(x=255, y=175)
+        self.title_label.pack(pady=20)
 
-        self.search_box = ttk.Entry(self.root, width=30, font=("Arial", 15))
-        self.search_box.place(x=355, y=180)
+        """Input Frame"""
+        self.input_frame = tk.Frame(self.root, bg="#F8F9FA")
+        self.input_frame.pack(pady=20)
 
-        """For submit button"""
-        self.submit_button = ttk.Button(
-            self.root,
-            text="Submit",
-            width=15,
-            command=self.getinput,
-            style="my.TButton",
-        )
-        self.submit_button.place(x=355, y=320)
+        # Search Entry
+        tk.Label(
+            self.input_frame,
+            text="Search Query:",
+            font=("Arial", 14),
+            bg="#F8F9FA",
+            fg="#495057",
+        ).grid(row=0, column=0, padx=15, pady=10, sticky="w")
+        self.search_box = ttk.Entry(self.input_frame, width=40, font=("Arial", 14))
+        self.search_box.grid(row=0, column=1, padx=15, pady=10)
 
-        """for output format entry"""
-        self.outputFormatButtonLabel = ttk.Label(
-            self.root,
-            text="Format:",
-            font=("Franklin Gothic Medium", 17),
-            foreground="green",
-            background="white",
-        )
-        self.outputFormatButtonLabel.place(x=255, y=230)
-
+        # Output Format
+        tk.Label(
+            self.input_frame,
+            text="Output Format:",
+            font=("Arial", 14),
+            bg="#F8F9FA",
+            fg="#495057",
+        ).grid(row=1, column=0, padx=15, pady=10, sticky="w")
         self.outputFormatButton = ttk.Combobox(
-            self.root, values=["Excel", "Json", "Csv"], state="readonly"
+            self.input_frame, values=["Excel", "Json", "Csv"], state="readonly"
         )
-        self.outputFormatButton.place(x=355, y=240)
+        self.outputFormatButton.grid(row=1, column=1, padx=15, pady=10)
+        self.outputFormatButton.set("Excel")  # Default format
 
-        """for message box"""
-        self.show_text = tk.Text(
-            self.root,
-            font=("arial", 13),
-            height=10,
-            width=35,
-            state="disabled",
-            border=False,
-            wrap=WORD,
-            highlightbackground="black",
-            highlightthickness=2,
-        )
-        self.show_text.place(x=295, y=440)
-
-        """For healdess checkbox"""
-
+        # Headless Mode
         self.healdessCheckBoxVar = tk.IntVar()
         self.healdessCheckBox = tk.Checkbutton(
-            self.root, text="Headless mode", variable=self.healdessCheckBoxVar)
-        self.healdessCheckBox.place(x=700, y=45)
+            self.input_frame,
+            text="Run in Headless Mode",
+            variable=self.healdessCheckBoxVar,
+            bg="#F8F9FA",
+            fg="#495057",
+            font=("Arial", 12),
+        )
+        self.healdessCheckBox.grid(row=2, column=1, pady=10, sticky="w")
 
-        self.__replacingtext(
-            "Google Maps Scrapping"
+        """Submit Button"""
+        self.submit_button = ttk.Button(
+            self.root,
+            text="Start Scraping",
+            command=self.getinput,
+            style="Submit.TButton",
+        )
+        self.submit_button.pack(pady=10)
+
+        """Message Display"""
+        self.show_text = tk.Text(
+            self.root,
+            font=("Arial", 12),
+            height=15,
+            width=80,
+            state="disabled",
+            wrap=WORD,
+            bg="#FFFFFF",
+            fg="#212529",
+            bd=2,
+            relief="groove",
+        )
+        self.show_text.pack(padx=20, pady=20)
+
+        """Styling"""
+        self.style = ttk.Style()
+        self.style.configure(
+            "Submit.TButton",
+            font=("Arial", 14, "bold"),
+            background="#28A745",
+            foreground="white",
+            padding=10,
+        )
+        self.style.map(
+            "Submit.TButton", background=[("active", "#218838")], foreground=[("active", "white")]
         )
 
+        self.__replacingtext("Welcome to Google Maps Scraper")
+
+        # Initialize communicator
         self.init_communicator()
-    
+
     def init_communicator(self):
         Communicator.set_frontend_object(self)
 
     def __replacingtext(self, text):
-        """This function will insert the text in text showing box"""
+        """This function will insert the text in the message box"""
 
         self.show_text.config(state="normal")
-        self.show_text.insert(tk.END, "• " + text)
-        self.show_text.insert(tk.END, "\n\n")
+        self.show_text.insert(tk.END, "• " + text + "\n\n")
         self.show_text.see(tk.END)
         self.show_text.config(state="disabled")
 
@@ -121,26 +131,26 @@ class Frontend:
             self.__replacingtext(text="Oops! Your query is not valid")
 
         elif len(self.searchQuery) == 0:
-            self.__replacingtext(text="Oops! You did empty search")
+            self.__replacingtext(text="Oops! You did an empty search")
         elif len(self.outputFormatValue) == 0:
-            self.__replacingtext(text="Oops! You did not select output format")
+            self.__replacingtext(text="Oops! You did not select an output format")
 
         else:
             self.submit_button.config(state="disabled")
-
             self.searchQuery = self.searchQuery.lower()
             self.outputFormatValue = self.outputFormatValue.lower()
             self.headlessMode = self.healdessCheckBoxVar.get()
 
+            # Start the backend in a new thread
             self.threadToStartBackend = threading.Thread(
-                target=self.startscraping)
+                target=self.startscraping
+            )
             self.threadToStartBackend.start()
 
     def closingbrowser(self):
-        """It will close the browser when the app is closed"""
+        """Close the app cleanly"""
 
         try:
-            # super().closeThread.set()
             Common.set_close_thread()
             self.root.destroy()
         except:
@@ -154,7 +164,9 @@ class Frontend:
         )
 
         backend.mainscraping()
-    
+        self.__replacingtext("Scraping completed successfully!")
+        self.end_processing()
+
     def end_processing(self):
         self.submit_button.config(state="normal")
         try:
@@ -163,10 +175,7 @@ class Frontend:
         except:
             pass
 
-    def messageshowing(
-        self,
-        message):
-
+    def messageshowing(self, message):
         self.__replacingtext(message)
 
 
