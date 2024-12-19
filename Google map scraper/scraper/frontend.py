@@ -59,10 +59,10 @@ class Frontend:
         self.outputFormatButton.set("Excel")  # Default format
 
         # Headless Mode
-        self.healdessCheckBoxVar = tk.IntVar()
+        self.healdessCheckBoxVar = tk.IntVar(value=1)
         self.healdessCheckBox = tk.Checkbutton(
             self.input_frame,
-            text="Run in Headless Mode",
+            text="Disable Debug Mode",
             variable=self.healdessCheckBoxVar,
             bg="#F8F9FA",
             fg="#495057",
@@ -100,7 +100,7 @@ class Frontend:
             "Submit.TButton",
             font=("Arial", 14, "bold"),
             background="#28A745",
-            foreground="white",
+            foreground="black",
             padding=10,
         )
         self.style.map(

@@ -28,122 +28,108 @@ class Parser(Base):
         )
         try:
             # Initialize data points
-            rating, totalReviews, address, websiteUrl, phone, hours, category, gmapsUrl, bookingLink, businessStatus, email, lgbtq_friendly = (
-                None, None, None, None, None, None, None, None, None, None, None, None
-            )
+            data = {
+                "Category": None,
+                "Name": None,
+                "Phone": None,
+                "Google Maps URL": None,
+                "Website": None,
+                "Business Status": None,
+                "Address": None,
+                "Total Reviews": None,
+                "Booking Links": None,
+                "Rating": None,
+                "Hours": None,
+                "Email": None,
+                "LGBTQ+ Friendly": None,
+            }
 
             html = infoSheet.get_attribute("outerHTML")
             soup = BeautifulSoup(html, "html.parser")
 
-            # Extract rating
+            # Use selective parsing to reduce overhead
             try:
-                rating = soup.find("span", class_="ceNzKf").get("aria-label")
-                rating = rating.replace("stars", "").strip()
-            except:
-                rating = None
+                data["Rating"] = soup.select_one("span.ceNzKf").get("aria-label", "").replace("stars", "").strip()
+            except AttributeError:
+                pass
 
-            # Extract total reviews
             try:
-                totalReviews = list(soup.find("div", class_="F7nice").children)
-                totalReviews = totalReviews[1].get_text(strip=True)
-            except:
-                totalReviews = None
+                total_reviews_element = soup.select_one("div.F7nice")
+                if total_reviews_element:
+                    data["Total Reviews"] = total_reviews_element.get_text(strip=True)
+            except AttributeError:
+                pass
 
-            # Extract name
             try:
-                name = soup.select_one(".tAiQdd h1.DUwDvf").text.strip()
-            except:
-                name = None
+                data["Name"] = soup.select_one(".tAiQdd h1.DUwDvf").get_text(strip=True)
+            except AttributeError:
+                pass
 
             # Extract address, website, phone, and appointment link
-            allInfoBars = soup.find_all("button", class_="CsEnBe")
-            for infoBar in allInfoBars:
-                data_tooltip = infoBar.get("data-tooltip")
-                text = infoBar.find('div', class_='rogA2c').text.strip()
+            for infoBar in soup.select("button.CsEnBe"):
+                data_tooltip = infoBar.get("data-tooltip", "")
+                text = infoBar.select_one("div.rogA2c").get_text(strip=True) if infoBar.select_one("div.rogA2c") else ""
 
                 if data_tooltip == self.comparing_tool_tips["location"]:
-                    address = text
+                    data["Address"] = text
                 elif data_tooltip == self.comparing_tool_tips["phone"]:
-                    phone = text.strip()
+                    data["Phone"] = text
 
-            # Extract website URL
             try:
-                websiteTag = soup.find("a", {"aria-label": lambda x: x and "Website:" in x})
+                websiteTag = soup.select_one("a[aria-label*='Website']")
                 if websiteTag:
-                    websiteUrl = websiteTag.get("href")
-            except:
-                websiteUrl = None
+                    data["Website"] = websiteTag.get("href")
+            except AttributeError:
+                pass
 
-            # Extract booking link
             try:
-                bookingTag = soup.find("a", {"aria-label": lambda x: x and "Open booking link" in x})
+                bookingTag = soup.select_one("a[aria-label*='Open booking link']")
                 if bookingTag:
-                    bookingLink = bookingTag.get("href")
-            except:
-                bookingLink = None
+                    data["Booking Links"] = bookingTag.get("href")
+            except AttributeError:
+                pass
 
-            # Extract hours of operation
             try:
-                hours = soup.find("div", class_="t39EBf").get_text(strip=True)
-            except:
-                hours = None
+                data["Hours"] = soup.select_one("div.t39EBf").get_text(strip=True)
+            except AttributeError:
+                pass
 
-            # Extract category
             try:
-                category = soup.find("button", class_="DkEaL").text.strip()
-            except:
-                category = None
+                data["Category"] = soup.select_one("button.DkEaL").get_text(strip=True)
+            except AttributeError:
+                pass
 
-            # Extract Google Maps URL
-            try:
-                gmapsUrl = self.driver.current_url
-            except:
-                gmapsUrl = None
+            data["Google Maps URL"] = self.driver.current_url
 
-            # Extract business status
             try:
-                businessStatus = soup.find("span", class_="ZDu9vd").findChildren("span", recursive=False)[0].get_text(strip=True)
-            except:
-                businessStatus = None
+                businessStatus = soup.select_one("span.ZDu9vd span")
+                if businessStatus:
+                    data["Business Status"] = businessStatus.get_text(strip=True)
+            except AttributeError:
+                pass
 
-            # Check for LGBTQ+ Friendly Status
             try:
-                lgbtq_tag = soup.find("span", string=lambda x: x and "LGBTQ+ friendly" in x)
-                lgbtq_friendly = "Yes" if lgbtq_tag else "No"
-            except:
-                lgbtq_friendly = "No"
+                lgbtq_tag = soup.select_one("span:contains('LGBTQ+ friendly')")
+                data["LGBTQ+ Friendly"] = "Yes" if lgbtq_tag else "No"
+            except AttributeError:
+                pass
 
             # Fallback: Use WebCrawler if phone or email is missing
-            if (not phone or phone.strip() == "") or (not email or email.strip() == ""):
-                if websiteUrl:
-                    print(f"Using WebCrawler to fetch missing data from: {websiteUrl}")
-                    web_crawler = WebCrawler(url=websiteUrl)
+            if not data["Phone"] or not data["Email"]:
+                if data["Website"]:
+                    print(f"Using WebCrawler to fetch missing data from: {data['Website']}")
+                    web_crawler = WebCrawler(url=data["Website"])
                     if web_crawler.crawl():
-                        email = email or web_crawler.get_email_from_website()
-                        phone = phone or web_crawler.get_phone_from_website()
-                else:
-                    print("No website URL found; skipping WebCrawler fallback.")
-
-            data = {
-                "Category": category,
-                "Name": name,
-                "Phone": phone if phone else "",
-                "Google Maps URL": gmapsUrl,
-                "Website": websiteUrl,
-                "Business Status": businessStatus,
-                "Address": address,
-                "Total Reviews": totalReviews,
-                "Booking Links": bookingLink,
-                "Rating": rating,
-                "Hours": hours,
-                "Email": email if email else "",
-                "LGBTQ+ Friendly": lgbtq_friendly,
-            }
+                        data["Email"] = data["Email"] or web_crawler.get_email_from_website()
+                        data["Phone"] = data["Phone"] or web_crawler.get_phone_from_website()
 
             self.finalData.append(data)
 
         except Exception as e:
-            Communicator.show_error_message(f"Error occurred while parsing a location. Error is: {str(e)}", ERROR_CODES['ERR_WHILE_PARSING_DETAILS'])
+            Communicator.show_error_message(
+                f"Error occurred while parsing a location. Error is: {str(e)}",
+                ERROR_CODES['ERR_WHILE_PARSING_DETAILS']
+            )
 
     def main(self, allResultsLinks):
         Communicator.show_message("Scrolling is done. Now going to scrape each location")
