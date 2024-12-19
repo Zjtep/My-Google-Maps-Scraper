@@ -19,7 +19,19 @@ class WebCrawler:
     def get_email(self, html):
         """Extract email addresses from HTML content."""
         email_pattern = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
-        return self.remove_dup(re.findall(email_pattern, html))
+        emails = self.remove_dup(re.findall(email_pattern, html))
+        
+        # Check for obfuscated emails (e.g., inside attributes or split across tags)
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all(["a", "span", "div"]):  # Common tags for obfuscated emails
+            if tag.get("href") and "mailto:" in tag.get("href", ""):
+                emails.append(tag.get("href").replace("mailto:", "").strip())
+            elif tag.get("data-email"):
+                emails.append(tag.get("data-email").strip())
+            elif tag.get_text() and "@" in tag.get_text():
+                emails.append(tag.get_text().strip())
+        return self.remove_dup(emails)
+
 
     def get_phone(self, html):
         """Extract valid phone numbers from HTML content."""
@@ -131,7 +143,7 @@ class WebCrawler:
 
 if __name__ == "__main__":
     # Example usage:
-    crawler = WebCrawler(url="http://submissionsbjjacademy.com/")
+    crawler = WebCrawler(url="https://mrfishcanada.com/")
     crawler.crawl()
 
     print("Final Results:")
