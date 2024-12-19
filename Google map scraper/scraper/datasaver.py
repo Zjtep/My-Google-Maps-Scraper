@@ -1,12 +1,7 @@
-"""
-This module contain the code for saving the scraped data
-"""
-
-
 import pandas as pd
+import os
 from .communicator import Communicator
 from .settings import OUTPUT_PATH
-import os
 from .error_codes import ERROR_CODES
 
 class DataSaver:
@@ -15,11 +10,10 @@ class DataSaver:
 
     def save(self, datalist):
         """
-        This function will save the data that has been scrapped.
-        This can be call if any error occurs while scraping , or if scraping is done successfully.
-        In both cases we have to save the scraped data.
+        Save the scraped data in the specified format(s).
+        This function can be called if any error occurs while scraping, or if scraping is done successfully.
+        In both cases, we have to save the scraped data.
         """
-
         if len(datalist) > 0:
             Communicator.show_message("Saving the scraped data")
 
@@ -27,43 +21,45 @@ class DataSaver:
             totalRecords = dataFrame.shape[0]
 
             searchQuery = Communicator.get_search_query()
-            filename = f"{searchQuery} - GMS output"
+            base_filename = f"{searchQuery} - GMS output"
 
-            if self.outputFormat == "excel":
-                extension = ".xlsx"
-            elif self.outputFormat == "csv":
-                extension = ".csv"
-            elif self.outputFormat == "json":
-                extension = ".json"
-                
-             # Create the output directory if it does not exist
+            # Create the output directory if it does not exist
             if not os.path.exists(OUTPUT_PATH):
                 os.makedirs(OUTPUT_PATH)
-            joinedPath = OUTPUT_PATH + filename + extension
 
-            if os.path.exists(joinedPath):
+            def get_unique_filename(extension):
+                """Generate a unique filename to avoid overwriting existing files."""
+                filename = f"{base_filename}{extension}"
+                joinedPath = os.path.join(OUTPUT_PATH, filename)
                 index = 1
-                while True:
-                    filename = f"{searchQuery} - GMS output ({index})"
+                while os.path.exists(joinedPath):
+                    filename = f"{base_filename} ({index}){extension}"
+                    joinedPath = os.path.join(OUTPUT_PATH, filename)
+                    index += 1
+                return joinedPath
 
-                    joinedPath = OUTPUT_PATH + filename + extension
+            output_paths = []
 
-                    if os.path.exists(joinedPath):
-                        index += 1
+            if self.outputFormat == "excel" or self.outputFormat == "excel+json":
+                excel_path = get_unique_filename(".xlsx")
+                dataFrame.to_excel(excel_path, index=False)
+                output_paths.append(excel_path)
 
-                    else:
-                        break
-            if self.outputFormat == "excel":
-                dataFrame.to_excel(joinedPath, index=False)
-            elif self.outputFormat == "csv":
-                dataFrame.to_csv(joinedPath, index=False)
+            if self.outputFormat == "csv":
+                csv_path = get_unique_filename(".csv")
+                dataFrame.to_csv(csv_path, index=False)
+                output_paths.append(csv_path)
 
-            elif self.outputFormat == "json":
-                dataFrame.to_json(joinedPath, indent=4, orient="records")
+            if self.outputFormat == "json" or self.outputFormat == "excel+json":
+                json_path = get_unique_filename(".json")
+                dataFrame.to_json(json_path, indent=4, orient="records")
+                output_paths.append(json_path)
 
-            Communicator.show_message(f"Scraped data successfully saved! Total records saved: {totalRecords}.")
-            
+            Communicator.show_message(
+                f"Scraped data successfully saved! Total records saved: {totalRecords}.\nOutput files:\n" + "\n".join(output_paths)
+            )
         else:
-            Communicator.show_error_message("Oops! Could not scrape the data because you did not scrape any record.",{ERROR_CODES['NO_RECORD_TO_SAVE']})
-
-
+            Communicator.show_error_message(
+                "Oops! Could not scrape the data because you did not scrape any record.",
+                {ERROR_CODES['NO_RECORD_TO_SAVE']}
+            )

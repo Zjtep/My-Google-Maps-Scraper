@@ -53,10 +53,10 @@ class Frontend:
             fg="#495057",
         ).grid(row=1, column=0, padx=15, pady=10, sticky="w")
         self.outputFormatButton = ttk.Combobox(
-            self.input_frame, values=["Excel", "Json", "Csv"], state="readonly"
+            self.input_frame, values=["Excel+Json", "Excel", "Json", "Csv"], state="readonly"
         )
         self.outputFormatButton.grid(row=1, column=1, padx=15, pady=10)
-        self.outputFormatButton.set("Excel")  # Default format
+        self.outputFormatButton.set("Excel+Json")  # Default format
 
         # Headless Mode
         self.healdessCheckBoxVar = tk.IntVar(value=1)
